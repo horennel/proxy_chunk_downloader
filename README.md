@@ -2,6 +2,8 @@
 A simple multi-threaded, multi-proxy chunked downloader.
 
 ### How to use it
+- Modify proxies first in downloader.py
+
 ```
 --p Enable proxy
 --n Number of threads (Default 6)
