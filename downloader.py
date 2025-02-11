@@ -5,7 +5,10 @@ import json
 from tqdm import tqdm
 import argparse
 import time
+import urllib3
 
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def create_chunks(file_size, num_threads):
     base_chunk_size = file_size // num_threads
