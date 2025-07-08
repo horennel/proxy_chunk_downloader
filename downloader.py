@@ -156,7 +156,7 @@ class Downloader:
                 title="🏆  文件下载成功",
                 body=f"文件{self.output}下载成功!",
                 sound="shake",
-                icon="https://c-ssl.dtstatic.com/uploads/item/201911/16/20191116010243_lavmv.thumb.1000_0.jpeg"
+                icon=os.getenv('BARK_ICON')
             )
         else:
             print(f"⏹️ 下载未完成，还有 {len(remaining)} 个分段未完成，稍后可重新运行以继续下载")
@@ -164,7 +164,7 @@ class Downloader:
                 title="❌  文件下载失败",
                 body=f"文件{self.output}下载失败!\n还有 {len(remaining)} 个分段未完成!",
                 sound="shake",
-                icon="https://c-ssl.dtstatic.com/uploads/item/201911/16/20191116010243_lavmv.thumb.1000_0.jpeg"
+                icon=os.getenv('BARK_ICON')
             )
 
 
