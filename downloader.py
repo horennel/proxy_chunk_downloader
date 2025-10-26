@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from rich.progress import Progress, BarColumn, TimeRemainingColumn, DownloadColumn, TransferSpeedColumn
 from bark_python import BarkClient, CBCStrategy
 
+# Bark 推送配置
 client = BarkClient(device_key=os.getenv('BARK_DEVICE_KEY'), api_url=os.getenv('BARK_URL'))
 client.set_encryption(
     key=os.getenv('BARK_KEY'),
@@ -29,6 +30,15 @@ class Downloader:
         self.retry_wait = retry_wait
         self.temp_files = [f"{output}.part{i}" for i in range(num_threads)]
 
+        # Chrome UA 池（不同版本/系统）
+        self.user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.6533.88 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.54 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.141 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.60 Safari/537.36",
+        ]
+
     def get_file_size(self):
         try:
             headers = requests.head(self.url, verify=self.verify_ssl, timeout=(30, 30)).headers
@@ -36,7 +46,7 @@ class Downloader:
         except Exception as e:
             raise Exception(f"无法获取文件大小: {e}")
 
-    def download_range_with_rich(self, start, end, part_index, proxy, progress, task_id):
+    def download_range_with_rich(self, start, end, part_index, proxy, progress, task_id, ua):
         temp_file = self.temp_files[part_index]
         expected_size = end - start + 1
 
@@ -47,7 +57,10 @@ class Downloader:
         attempt = 0
         while attempt <= self.max_retries:
             try:
-                headers = {'Range': f'bytes={start}-{end}'}
+                headers = {
+                    'Range': f'bytes={start}-{end}',
+                    'User-Agent': ua
+                }
                 mode = 'ab' if os.path.exists(temp_file) else 'wb'
                 downloaded = os.path.getsize(temp_file) if os.path.exists(temp_file) else 0
                 if downloaded > 0:
@@ -138,10 +151,11 @@ class Downloader:
                     print(f"🚫 无效代理 Thread-{i}: {proxy}，跳过该线程")
                     continue
 
+                ua = self.user_agents[i % len(self.user_agents)]  # 👈 分配固定 UA
                 task_id = progress.add_task(f"Thread-{i}", total=end - start + 1)
                 t = threading.Thread(
                     target=self.download_range_with_rich,
-                    args=(start, end, i, proxy, progress, task_id)
+                    args=(start, end, i, proxy, progress, task_id, ua)
                 )
                 t.start()
                 threads.append(t)
@@ -174,7 +188,7 @@ def guess_file_name_from_url(url):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="多线程断点续传下载器（支持代理/SSL/自动重试）")
+    parser = argparse.ArgumentParser(description="多线程断点续传下载器（支持代理/SSL/自动重试/自定义UA）")
     parser.add_argument("url", help="文件下载地址")
     parser.add_argument("--p", action="store_true", help="启用代理模式")
     parser.add_argument("--n", type=int, default=6, help="线程数量（默认6）")
@@ -189,12 +203,12 @@ def main():
     verify_ssl = not args.v
 
     proxy_pool = [
-        "http://127.0.0.1:8890",
-        "http://127.0.0.1:8891",
-        "http://127.0.0.1:8892",
-        "http://127.0.0.1:8893",
-        "http://127.0.0.1:8894",
-        "http://127.0.0.1:8895",
+        "http://127.0.0.1:6890",
+        "http://127.0.0.1:6891",
+        "http://127.0.0.1:6892",
+        "http://127.0.0.1:6893",
+        "http://127.0.0.1:6894",
+        "http://127.0.0.1:6895",
     ]
 
     downloader = Downloader(
